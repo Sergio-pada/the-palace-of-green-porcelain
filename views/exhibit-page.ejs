@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= exhibit.title %></title>
+    <link rel="stylesheet" href="/styles.css">
+    
+  </head>
+  <body style='background: url(<%= exhibit.image %>) no-repeat center center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;'>
+    <h1><%= exhibit.title %></h1>
+    <p><%= exhibit.description %></p>
+    <img src="<%= exhibit.image %>" alt="<%= exhibit.title %>">
+ 
+  </body>
+</html>
