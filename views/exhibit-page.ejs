@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= exhibit.title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&family=Libre+Baskerville:ital@0;1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
     
   </head>
-  <body style='background: url(<%= exhibit.image %>) no-repeat center center fixed;
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    -o-background-size: cover;
-    background-size: cover;'>
-    <h1><%= exhibit.title %></h1>
-    <p><%= exhibit.description %></p>
-    <img src="<%= exhibit.image %>" alt="<%= exhibit.title %>">
- 
+  <body>
+    <a href="/"><h1 id="title">THE<br>PALACE<br>OF<br>GREEN<br>PORCELAIN</h1></a>
+    <div class="card">
+      <img class="exhibit-image" src="<%= exhibit.image %>" alt="<%= exhibit.title %>">
+      <h1><%= exhibit.title %></h1>
+      <p><i><%= exhibit.description %></i></p>
+  </div>
   </body>
 </html>

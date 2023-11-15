@@ -18,9 +18,10 @@ const client = new pg.Client({
   password: "Guitarra90s!",
   port: 5433,
 });
+// Serving static files from the "public" directory
 app.use(express.static("public"));
 client.connect();
-// Serving static files from the "public" directory
+
 
 // Define the route for the exhibit pages
 app.get('/exhibit/:id', (req, res) => {

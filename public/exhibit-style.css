@@ -1,0 +1,36 @@
+/* Add this CSS to your EJS file or link to an external CSS file */
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    text-decoration:none;
+  }
+  
+  .card {
+    max-width: 40%;
+    width: 100%;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    text-align: center;
+  }
+  
+  .card img {
+    max-width: 100%;
+    height: auto;
+    border: 8px solid #006400; /* Dark green border */
+  }
+  
+  .card h2 {
+    margin-top: 20px;
+    color: #333; /* Dark text color */
+  }
+  
+  .card p {
+    margin-top: 10px;
+    color: #666; /* Slightly lighter text color */
+  }
+  
