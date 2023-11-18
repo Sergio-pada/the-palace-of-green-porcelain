@@ -1,106 +1,134 @@
-import pg from "pg";
+import pkg from "pg";
+const { Client } = pkg;
 import express from "express";
 import path from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import { v4 as uuidv4 } from 'uuid'; // for generating unique IDs
+import { v4 as uuidv4 } from 'uuid';
+import cookieParser from 'cookie-parser';
+import fs from 'fs';
+import { generateRecommendations } from './recommendation.js';
 
 const app = express();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-app.set('view engine', 'ejs'); // Set your view engine (EJS)
-app.set('views', path.join(__dirname, 'views')); // Set the directory for your view templates
-
-// Initialize the PostgreSQL client
-const client = new pg.Client({
-  user: "postgres",
-  host: "localhost",
-  database: "archive",
-  password: "Guitarra90s!",
-  port: 5433,
-});
-// Serving static files from the "public" directory
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 app.use(express.static("public"));
-client.connect();
-
-
-
-
-// // Define the route for the exhibit pages
-// app.get('/exhibit/:id', (req, res) => {
-//   const exhibitId = req.params.id;
-  
-//   // Generate a unique ID for the new user
-//   const userId = uuidv4();
-//   console.log(userId);
-//   // Insert the new user into the database
-//   client.query('INSERT INTO users (user_id) VALUES ($1)', [userId], (err, dbRes) => {
-//     if (err) {
-//       console.error(err);
-//     } else {
-//       console.log('New user created with ID: ' + userId);
-//     }
-//   });
-
-//   // Query the database to retrieve exhibit data based on exhibitId
-//   client.query('SELECT * FROM exhibits WHERE exhibit_id = $1', [exhibitId], (err, dbRes) => {
-//     if (err) {
-//       console.error(err);
-//       res.status(500).send('Error retrieving exhibit data');
-//     } else {
-//       // Render the exhibit page with the retrieved data
-//       const exhibitData = dbRes.rows[0]; // Assuming a single exhibit with the given ID
-//       res.render('exhibit-page', { exhibit: exhibitData });
-//     }
-//     console.log(req.params.image)
-//   });
-// });
-
-
-import cookieParser from 'cookie-parser';
-
-
 app.use(cookieParser());
 
-app.get('/exhibit/:id', async (req, res) => {
-  const exhibitId = req.params.id;
 
+let client;
+
+if (process.env.DATABASE_URL) {
+  client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  });
+} else {
+  // Local setup
+  client = new Client({
+    user: "postgres",
+    host: "localhost",
+    database: "archive",
+    password: "Passw0rd!",
+    port: 5433,
+  });
+}
+client.connect();
+
+app.get('/', async (req, res) => {
   let userId = req.cookies.userId;
-
+  
   if (!userId) {
-    // Generate a unique ID for the new user
     userId = uuidv4();
-    console.log(userId);
-
-    // Insert the new user into the database
+    
     try {
-      const dbRes = await client.query('INSERT INTO users (user_id) VALUES ($1)', [userId]);
+      await client.query('INSERT INTO users (user_id) VALUES ($1)', [userId]);
       console.log('New user created with ID: ' + userId);
-
-      // Set a cookie to remember the user
       res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
     } catch (err) {
       console.error(err);
     }
+  } else {
+    console.log('Returning user');
+    console.log(userId);
+  }
+  
+  fetchData();
+  res.render('index', { userId });
+});
+
+app.get('/exhibit/:id', async (req, res) => {
+  const exhibitId = req.params.id;
+  let userId = req.cookies.userId;
+  
+  if (!userId) {
+    userId = uuidv4();
+
+    try {
+      await client.query('INSERT INTO users (user_id) VALUES ($1)', [userId]);
+      console.log('New user created with ID: ' + userId);
+      res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
+    } catch (err) {
+      console.error(err);
+    }
+  } else {
+    console.log('Returning user');
+    const { rows } = await client.query('SELECT tags FROM exhibits WHERE exhibit_id = $1', [exhibitId]);
+    const tags = rows[0].tags;
+
+    for (let tag of tags) {
+      await client.query(`
+        UPDATE users 
+        SET interests = array_prepend($1, array_remove(interests, $1)) 
+        WHERE user_id = $2
+      `, [tag, userId]);
+    }
   }
 
-  // Query the database to retrieve exhibit data based on exhibitId
+  let exhibitData;
   try {
     const dbRes = await client.query('SELECT * FROM exhibits WHERE exhibit_id = $1', [exhibitId]);
-
-    // Render the exhibit page with the retrieved data
-    const exhibitData = dbRes.rows[0]; // Assuming a single exhibit with the given ID
-    res.render('exhibit-page', { exhibit: exhibitData });
+    exhibitData = dbRes.rows[0];
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error retrieving exhibit data');
+    return res.status(500).send('Error retrieving exhibit data');
   }
+
+  res.render('exhibit-page', { exhibit: exhibitData });
 });
 
 
+async function fetchData() {
+  try {
+    const exhibitsRes = await client.query('SELECT * FROM exhibits');
+    const exhibitsData = exhibitsRes.rows;
 
+    const usersRes = await client.query('SELECT * FROM users');
+    const usersData = usersRes.rows;
 
-const port = 3000;
+    fs.writeFileSync('data.json', JSON.stringify({ exhibitsData, usersData }));
+  } catch (err) {
+    console.error(err);
+  } 
+}
+
+app.get('/recommendations/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const recommendations = await generateRecommendations(userId);
+    console.log(recommendations); 
+    res.render('recommendations', { recommendations });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('No recommendations found. Please explore some exhibits first. </br><a href="/">Go back to home page</a>');
+  }
+});
+
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
 });

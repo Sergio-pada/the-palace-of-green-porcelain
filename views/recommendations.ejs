@@ -1,0 +1,7 @@
+<% recommendations.forEach(recommendation => { %>
+  <div class="column">
+    <a href="/exhibit/<%= recommendation.id %>">
+      <img class="grid-image" src="<%= recommendation.image %>" alt="Exhibit image">
+    </a>
+  </div>
+<% }); %>
