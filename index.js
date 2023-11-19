@@ -27,6 +27,7 @@ if (process.env.DATABASE_URL) {
       rejectUnauthorized: false
     }
   });
+  console.log('Heroku setup');
 } else {
   // Local setup
   client = new Client({
@@ -36,6 +37,7 @@ if (process.env.DATABASE_URL) {
     password: "Passw0rd!",
     port: 5433,
   });
+  console.log('Local setup');
 }
 client.connect();
 
@@ -104,17 +106,64 @@ app.get('/exhibit/:id', async (req, res) => {
 
 async function fetchData() {
   try {
+    // Query the 'exhibits' table
     const exhibitsRes = await client.query('SELECT * FROM archive.exhibits');
-    const exhibitsData = exhibitsRes.rows;
+    let exhibitsData = exhibitsRes.rows;
 
+
+
+    // Standardize the format of tags so theyre all lowercase
+    exhibitsData.forEach(exhibit => {
+      if (exhibit.tags) {
+        exhibit.tags = exhibit.tags.map(tag => tag.toLowerCase());
+      }
+    });
+
+    // Query the 'users' table
     const usersRes = await client.query('SELECT * FROM archive.users');
     const usersData = usersRes.rows;
 
-    fs.writeFileSync('data.json', JSON.stringify({ exhibitsData, usersData }));
+    // Write the cleaned data to a JSON file
+    fs.writeFileSync('cleaned_data.json', JSON.stringify({ exhibitsData, usersData }));
   } catch (err) {
     console.error(err);
-  } 
+  }
 }
+// For pie chart of user interests. Counts how many of each interest show up in the users interests columns
+async function calculateInterestCounts() {
+  // Query the 'users' table
+  const usersRes = await client.query('SELECT * FROM archive.users');
+  const usersData = usersRes.rows;
+
+  let interestsCount = {};
+  usersData.forEach(user => {
+    if (user.interests) {
+      user.interests.forEach(interest => {
+        if (!interestsCount[interest]) {
+          interestsCount[interest] = 0;
+        }
+        interestsCount[interest]++;
+      });
+    }
+  });
+
+  // Prepare the data for the chart
+  let chartData = Object.keys(interestsCount).map(interest => {
+    return {
+      label: interest,
+      value: interestsCount[interest]
+    };
+  });
+
+  console.log(chartData);
+  return chartData;
+}
+
+app.get('/dashboard', async (req, res) => {
+  const chartData = await calculateInterestCounts();
+  res.render('dashboard', { chartData });
+});
+
 
 app.get('/recommendations/:userId', async (req, res) => {
   try {

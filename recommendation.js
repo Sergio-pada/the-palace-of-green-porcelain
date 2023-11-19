@@ -36,7 +36,7 @@ export async function generateRecommendations(userId) {
   
     // Convert the vector to a tensor
     const userItemTensor = tf.tensor(userItemVector);
-  
+
     // Calculate the similarity scores
     const norms = userItemTensor.norm(2).expandDims(0);
     const normalized = userItemTensor.div(norms);
