@@ -1,5 +1,4 @@
 import pkg from "pg";
-const { Client } = pkg;
 import express from "express";
 import path from "path";
 import { dirname } from "path";
@@ -11,14 +10,18 @@ import { generateRecommendations } from './recommendation.js';
 
 const app = express();
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const port = process.env.PORT || 3000;
+const { Client } = pkg;
+let client;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-
-let client;
+/*
+  DATABASE CONNECTIVITY
+*/
 
 if (process.env.DATABASE_URL) {
   client = new Client({
@@ -39,8 +42,77 @@ if (process.env.DATABASE_URL) {
   });
   console.log('Local setup');
 }
+
+/*  
+  FUNCTIONS
+*/
+
+async function calculateInterestCounts() {
+  // Query the 'users' table
+  const usersRes = await client.query('SELECT * FROM archive.users');
+  const usersData = usersRes.rows;
+
+  let interestsCount = {};
+  usersData.forEach(user => {
+    if (user.interests) {
+      user.interests.forEach(interest => {
+        interest = interest.trim().toLowerCase();
+        if (!interestsCount[interest]) {
+          interestsCount[interest] = 0;
+        }
+        interestsCount[interest]++;
+      });
+    }
+  });
+
+  // Prepare the data for the chart
+  let chartData = Object.keys(interestsCount).map(interest => {
+    return {
+      label: interest,
+      value: interestsCount[interest]
+    };
+  });
+  return chartData;
+}
+async function fetchData() {
+  try {
+    const exhibitsRes = await client.query('SELECT * FROM archive.exhibits');
+    const exhibitsData = exhibitsRes.rows;
+
+    const usersRes = await client.query('SELECT * FROM archive.users');
+    const usersData = usersRes.rows;
+
+    fs.writeFileSync('data.json', JSON.stringify({ exhibitsData, usersData }));
+  } catch (err) {
+    console.error(err);
+  } 
+}
+
+// For exhibit visit count barchart
+async function calculateExhibitVisits() {
+  try {
+    const exhibitsRes = await client.query('SELECT * FROM archive.exhibits');
+    const exhibitsData = exhibitsRes.rows;
+
+    let labels = exhibitsData.map(exhibit => exhibit.title || 'Unknown');
+    let data = exhibitsData.map(exhibit => exhibit.visit_count || 0);
+
+    return { labels, data };
+  } catch (err) {
+    console.error(err);
+  }
+}
+// For user creation line chart
+async function calculateUserCreations() {
+  const result = await client.query('SELECT DATE(creation_date) as date, COUNT(*) as count FROM archive.users GROUP BY DATE(creation_date) ORDER BY DATE(creation_date)');
+  return result.rows;
+}
+
 client.connect();
 
+/*
+  ROUTES
+*/
 app.get('/', async (req, res) => {
   let userId = req.cookies.userId;
   
@@ -48,7 +120,7 @@ app.get('/', async (req, res) => {
     userId = uuidv4();
     
     try {
-      await client.query('INSERT INTO archive.users (user_id) VALUES ($1)', [userId]);
+      await client.query('INSERT INTO archive.users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
       console.log('New user created with ID: ' + userId);
       res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
     } catch (err) {
@@ -71,7 +143,7 @@ app.get('/exhibit/:id', async (req, res) => {
     userId = uuidv4();
 
     try {
-      await client.query('INSERT INTO archive.users (user_id) VALUES ($1)', [userId]);
+      await client.query('INSERT INTO archive.users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
       console.log('New user created with ID: ' + userId);
       res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
     } catch (err) {
@@ -85,10 +157,16 @@ app.get('/exhibit/:id', async (req, res) => {
     for (let tag of tags) {
       await client.query(`
         UPDATE archive.users 
-        SET interests = array_prepend($1, array_remove(interests, $1)) 
+        SET interests = array_prepend($1, interests) 
         WHERE user_id = $2
       `, [tag, userId]);
     }
+  }
+
+  try {
+    await client.query('UPDATE archive.exhibits SET visit_count = visit_count + 1 WHERE exhibit_id = $1', [exhibitId]);
+  } catch (err) {
+    console.error(err);
   }
 
   let exhibitData;
@@ -103,65 +181,12 @@ app.get('/exhibit/:id', async (req, res) => {
   res.render('exhibit-page', { exhibit: exhibitData });
 });
 
-
-async function fetchData() {
-  try {
-    // Query the 'exhibits' table
-    const exhibitsRes = await client.query('SELECT * FROM archive.exhibits');
-    let exhibitsData = exhibitsRes.rows;
-
-
-
-    // Standardize the format of tags so theyre all lowercase
-    exhibitsData.forEach(exhibit => {
-      if (exhibit.tags) {
-        exhibit.tags = exhibit.tags.map(tag => tag.toLowerCase());
-      }
-    });
-
-    // Query the 'users' table
-    const usersRes = await client.query('SELECT * FROM archive.users');
-    const usersData = usersRes.rows;
-
-    // Write the cleaned data to a JSON file
-    fs.writeFileSync('cleaned_data.json', JSON.stringify({ exhibitsData, usersData }));
-  } catch (err) {
-    console.error(err);
-  }
-}
-// For pie chart of user interests. Counts how many of each interest show up in the users interests columns
-async function calculateInterestCounts() {
-  // Query the 'users' table
-  const usersRes = await client.query('SELECT * FROM archive.users');
-  const usersData = usersRes.rows;
-
-  let interestsCount = {};
-  usersData.forEach(user => {
-    if (user.interests) {
-      user.interests.forEach(interest => {
-        if (!interestsCount[interest]) {
-          interestsCount[interest] = 0;
-        }
-        interestsCount[interest]++;
-      });
-    }
-  });
-
-  // Prepare the data for the chart
-  let chartData = Object.keys(interestsCount).map(interest => {
-    return {
-      label: interest,
-      value: interestsCount[interest]
-    };
-  });
-
-  console.log(chartData);
-  return chartData;
-}
-
 app.get('/dashboard', async (req, res) => {
   const chartData = await calculateInterestCounts();
-  res.render('dashboard', { chartData });
+  const exhibitData = await calculateExhibitVisits();
+  const userCreationData = await calculateUserCreations();
+
+  res.render('dashboard', { chartData, exhibitData, userCreationData });
 });
 
 
@@ -177,7 +202,7 @@ app.get('/recommendations/:userId', async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);
 });

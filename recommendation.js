@@ -9,9 +9,7 @@ export async function generateRecommendations(userId) {
   
     // Find the user
     const user = usersData.find(user => user.user_id === userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
+
   
     // Create a profile for the user
     const profile = {};
@@ -19,9 +17,8 @@ export async function generateRecommendations(userId) {
         user.interests.forEach(interest => {
           profile[interest] = (profile[interest] || 0) + 1;
         });
-      } else {
-        throw new Error('User not found or user has no interests');
-      }
+      } 
+
   
     // Create a vector of user-item interactions
     const userItemVector = exhibitsData.map(exhibit => {

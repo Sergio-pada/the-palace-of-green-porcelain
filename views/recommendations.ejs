@@ -1,7 +1,21 @@
-<% recommendations.forEach(recommendation => { %>
-  <div class="column">
-    <a href="/exhibit/<%= recommendation.id %>">
-      <img class="grid-image" src="<%= recommendation.image %>" alt="Exhibit image">
-    </a>
-  </div>
-<% }); %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700&family=Libre+Baskerville:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <title>Reccomended Exhibits</title>
+</head>
+<body>
+  <% recommendations.forEach(recommendation => { %>
+    <div class="column">
+      <a href="/exhibit/<%= recommendation.id %>">
+        <img class="grid-image" src="<%= recommendation.image %>" alt="Exhibit image">
+      </a>
+    </div>
+  <% }); %>
+</body>
+</html>
