@@ -10,16 +10,18 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    
     <a href="/"><h1 id="title">THE<br>PALACE<br>OF<br>GREEN<br>PORCELAIN</h1></a>
-    <a href="/recommendations/<%= userId %>" alt="logo"><h2 id="suggestions">Suggested Exhibits</h2></a>
-    <a href="/dashboard" alt="logo"><h2 id="suggestions">Dashboard</h2></a>
+
+
     <div class="container">
         <div class="row">
             <h2 id="tagline">A JOURNEY THROUGH TIME: <br>DISCOVER THE PAST<br>EXPLORE THE FUTURE</h2>
-            <p id="about"><i>Welcome to The Palace of Green Porcelain. Immerse yourself in a captivating journey through time as our exhibits showcase the astounding work of Denton Morris. From Victorian Era artifacts to futuristic masterpieces, each exhibit is a testament to the ever-changing culture on our planet. Join us in exploring the past, celebrating the present, and inspiring the future at The Palace of Green Porcelain. </i></p>
-            
+            <p id="about"><i>Welcome to The Palace of Green Porcelain. Immerse yourself in a captivating journey through time as our exhibits showcase the astounding work of Denton Morris. From Victorian Era artifacts to futuristic masterpieces, each exhibit is a testament to the ever-changing culture on our planet. Join us in exploring the past, celebrating the present, and inspiring the future at The Palace of Green Porcelain. After youve visited a few exhibits, check out a personalized list of exhibits here: <br><a id="about" href="/recommendations/<%= userId %>" alt="logo">For You...</a></i></p>
+
         </div>
         <div class="row">
+
             <h2>VICTORIAN ERA</h2>
         </div>
         <div class="image-row">
@@ -54,7 +56,28 @@
                 <a href="/exhibit/11"><img class="grid-image" src="sun_photo.jpeg" alt="Image 10"></a>
             </div>
         </div>
-
+        <a href="/dashboard" alt="logo"><h2>DASHBOARD</h2></a>
     </div>
+
+    <script>
+        window.addEventListener('scroll', function() {
+            var element = document.getElementById('title');
+            if (window.scrollY > 50) {
+                element.style.opacity = '0';
+                element.style.transition = 'opacity 0.3s ease-in-out'; 
+            } else {
+                element.style.opacity = '1';
+                element.style.transition = 'opacity 0.3s ease-in-out'; 
+            }
+        });
+            
+        var element = document.getElementById('title');
+        if (window.scrollY > 100) {
+            element.style.opacity = '0';
+        } else {
+            element.style.opacity = '1';
+        }
+        
+    </script>
 </body>
 </html>
