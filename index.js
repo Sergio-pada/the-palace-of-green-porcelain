@@ -49,7 +49,7 @@ if (process.env.DATABASE_URL) {
 
 async function calculateInterestCounts() {
   // Query the 'users' table
-  const usersRes = await client.query('SELECT * FROM users');
+  const usersRes = await client.query('SELECT * FROM archive.users');
   const usersData = usersRes.rows;
 
   let interestsCount = {};
@@ -76,10 +76,10 @@ async function calculateInterestCounts() {
 }
 async function fetchData() {
   try {
-    const exhibitsRes = await client.query('SELECT * FROM exhibits');
+    const exhibitsRes = await client.query('SELECT * FROM archive.exhibits ');
     const exhibitsData = exhibitsRes.rows;
 
-    const usersRes = await client.query('SELECT * FROM users');
+    const usersRes = await client.query('SELECT * FROM archive.users');
     const usersData = usersRes.rows;
 
     fs.writeFileSync('data.json', JSON.stringify({ exhibitsData, usersData }));
@@ -91,7 +91,7 @@ async function fetchData() {
 // For exhibit visit count barchart
 async function calculateExhibitVisits() {
   try {
-    const exhibitsRes = await client.query('SELECT * FROM exhibits');
+    const exhibitsRes = await client.query('SELECT * FROM archive.exhibits');
     const exhibitsData = exhibitsRes.rows;
 
     let labels = exhibitsData.map(exhibit => exhibit.title || 'Unknown');
@@ -104,7 +104,7 @@ async function calculateExhibitVisits() {
 }
 // For user creation line chart
 async function calculateUserCreations() {
-  const result = await client.query('SELECT DATE(creation_date) as date, COUNT(*) as count FROM users GROUP BY DATE(creation_date) ORDER BY DATE(creation_date)');
+  const result = await client.query('SELECT DATE(creation_date) as date, COUNT(*) as count FROM archive.users GROUP BY DATE(creation_date) ORDER BY DATE(creation_date)');
   return result.rows;
 }
 
@@ -120,7 +120,7 @@ app.get('/', async (req, res) => {
     userId = uuidv4();
     
     try {
-      await client.query('INSERT INTO users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
+      await client.query('INSERT INTO archive.users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
       console.log('New user created with ID: ' + userId);
       res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
     } catch (err) {
@@ -143,7 +143,7 @@ app.get('/exhibit/:id', async (req, res) => {
     userId = uuidv4();
 
     try {
-      await client.query('INSERT INTO users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
+      await client.query('INSERT INTO archive.users (user_id, creation_date) VALUES ($1, CURRENT_DATE)', [userId]);
       console.log('New user created with ID: ' + userId);
       res.cookie('userId', userId, { maxAge: 900000, httpOnly: true });
     } catch (err) {
@@ -151,12 +151,12 @@ app.get('/exhibit/:id', async (req, res) => {
     }
   } else {
     console.log('Returning user');
-    const { rows } = await client.query('SELECT tags FROM exhibits WHERE exhibit_id = $1', [exhibitId]);
+    const { rows } = await client.query('SELECT tags FROM archive.exhibits WHERE exhibit_id = $1', [exhibitId]);
     const tags = rows[0].tags;
 
     for (let tag of tags) {
       await client.query(`
-        UPDATE users 
+        UPDATE archive.users 
         SET interests = array_prepend($1, interests) 
         WHERE user_id = $2
       `, [tag, userId]);
@@ -164,14 +164,14 @@ app.get('/exhibit/:id', async (req, res) => {
   }
 
   try {
-    await client.query('UPDATE exhibits SET visit_count = visit_count + 1 WHERE exhibit_id = $1', [exhibitId]);
+    await client.query('UPDATE archive.exhibits SET visit_count = visit_count + 1 WHERE exhibit_id = $1', [exhibitId]);
   } catch (err) {
     console.error(err);
   }
 
   let exhibitData;
   try {
-    const dbRes = await client.query('SELECT * FROM exhibits WHERE exhibit_id = $1', [exhibitId]);
+    const dbRes = await client.query('SELECT * FROM archive.exhibits WHERE exhibit_id = $1', [exhibitId]);
     exhibitData = dbRes.rows[0];
   } catch (err) {
     console.error(err);
